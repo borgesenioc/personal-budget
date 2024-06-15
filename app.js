@@ -10,7 +10,12 @@ let totalBudget = 0;
 
 // Function to generate unique ID for envelopes
 const  generateID = () => {
-    return (envelopes.lenght) ? envelopes[envelopes.lenght - 1].id + 1 : 1;
+    return (envelopes.length) ? envelopes[envelopes.length - 1].id + 1 : 1;
+};
+
+// Function to get an envelope by the ID
+const getEnvelopeById = (num) => {
+    return envelopes.find(envelope => envelope.id === parseInt(id));
 };
 
 // Endpoint to create a new budget envelope
@@ -30,7 +35,7 @@ app.post('/envelopes', (req, res, next) => {
     envelopes.push(newEnvelope);
     totalBudget += value;
 
-    res.status(201).json(newEnvelope);
+    res.status(200).json(newEnvelope);
 });
 
 // Endpoint to get all envelopes
@@ -41,6 +46,18 @@ app.get('/envelopes', (req, res, next) => {
 app.get('/total-budget', (req, res, next) => {
     res.status(200).json(totalBudget);
 });
+
+app.get('/:id', (req, res, next) => {
+    const envelopeId = req.params.id;
+
+    if (envelopeId) {
+        findEnvelope = getEnvelopeById(envelopeID);
+        res.status(201).send(findEnvelope);
+    } else {
+        res.status(404).send(`Envelope ID does not exist.`);
+    }
+    
+})
 
 /*app.get('/', (req, res) => {
     res.send("Hello, World");
