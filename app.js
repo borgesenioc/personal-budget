@@ -3,6 +3,8 @@ const app = express();
 const port = 3000;
 
 app.use(express.json());
+app.use(express.static('public'));  // Serve static files from the public directory
+
 
 // Global variables to store information about envelopes and total budget
 let envelopes = [];
