@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Envelope Budgeting</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <h1>Envelope Budgeting</h1>
+    
+    <section>
+      <h2>Create New Envelope</h2>
+      <form id="createEnvelopeForm">
+        <label for="newEnvelopeName">Name:</label>
+        <input type="text" id="newEnvelopeName" name="name" required>
+        
+        <label for="newEnvelopeValue">Value:</label>
+        <input type="number" id="newEnvelopeValue" name="value" required>
+        
+        <button type="submit">Create</button>
+      </form>
+    </section>
+    
+    <section>
+      <h2>Envelopes</h2>
+      <button id="loadEnvelopes">Load Envelopes</button>
+      <ul id="envelopesList"></ul>
+    </section>
+    
+    <section>
+      <h2>Update Envelope</h2>
+      <form id="updateEnvelopeForm">
+        <label for="updateEnvelopeId">ID:</label>
+        <input type="number" id="updateEnvelopeId" name="id" required>
+        
+        <label for="updateEnvelopeName">Name:</label>
+        <input type="text" id="updateEnvelopeName" name="name">
+        
+        <label for="updateEnvelopeValue">Value:</label>
+        <input type="number" id="updateEnvelopeValue" name="value">
+        
+        <label for="transactionType">Transaction Type:</label>
+        <select id="transactionType" name="transaction_type">
+          <option value="deposit">Deposit</option>
+          <option value="withdraw">Withdraw</option>
+        </select>
+        
+        <button type="submit">Update</button>
+      </form>
+    </section>
+    
+    <section>
+      <h2>Delete Envelope</h2>
+      <form id="deleteEnvelopeForm">
+        <label for="deleteEnvelopeId">ID:</label>
+        <input type="number" id="deleteEnvelopeId" name="id" required>
+        
+        <button type="submit">Delete</button>
+      </form>
+    </section>
+    
+    <section>
+      <h2>Transfer Funds</h2>
+      <form id="transferFundsForm">
+        <label for="fromEnvelopeId">From ID:</label>
+        <input type="number" id="fromEnvelopeId" name="from" required>
+        
+        <label for="toEnvelopeId">To ID:</label>
+        <input type="number" id="toEnvelopeId" name="to" required>
+        
+        <label for="transferValue">Value:</label>
+        <input type="number" id="transferValue" name="value" required>
+        
+        <button type="submit">Transfer</button>
+      </form>
+    </section>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
