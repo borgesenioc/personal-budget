@@ -115,6 +115,26 @@ app.delete('/envelopes/:id', (req, res) => {
   }
 });
 
+// Endpoint to transfer budget between envelopes
+app.post('/envelopes/transfer/:from/:to', (req, res) => {
+    const { value } = req.body;
+    const fromEnvelope = getEnvelopeById(req.params.from);
+    const toEnvelope = getEnvelopeById(req.params.to);
+  
+    if (value !== undefined && fromEnvelope && toEnvelope) {
+      if (fromEnvelope.value >= value) {
+        fromEnvelope.value -= value;
+        toEnvelope.value += value;
+  
+        res.status(200).send(`$${value} was transferred from ${fromEnvelope.name} to ${toEnvelope.name}.`);
+      } else {
+        res.status(400).send(`Insufficient funds in ${fromEnvelope.name}.`);
+      }
+    } else {
+      res.status(404).send('One or both envelopes not found.');
+    }
+  });
+
 app.listen(port, () => {
   console.log(`Server is running on http://localhost:${port}`);
 });
