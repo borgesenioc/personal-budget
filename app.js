@@ -1,142 +1,281 @@
 const express = require('express');
+const { Sequelize, DataTypes } = require('sequelize');
 const app = express();
 const port = 3000;
+const swaggerOptions = {
+  swaggerDefinition: './swagger.yaml',
+  apis: [],
+};
 
 app.use(express.json());
 app.use(express.static('public'));  // Serve static files from the public directory
 
+// Set up Sequelize and PostgreSQL connection
+const sequelize = new Sequelize('envelope_budget', 'username', 'password', {
+host: 'localhost',
+dialect: 'postgres'
+});
 
-// Global variables to store information about envelopes and total budget
-let envelopes = [];
-let totalBudget = 0;
+// Define Envelope model
+const Envelope = sequelize.define('Envelope', {
+name: {
+type: DataTypes.STRING,
+allowNull: false
+},
+value: {
+type: DataTypes.DECIMAL,
+allowNull: false
+}
+}, {
+timestamps: true,
+createdAt: 'created_at',
+updatedAt: 'updated_at'
+});
 
-// Function to generate unique ID for envelopes
-const generateID = () => {
-  return envelopes.length ? envelopes[envelopes.length - 1].id + 1 : 1;
-};
+// Define Transaction model
+const Transaction = sequelize.define('Transaction', {
+envelope_id: {
+type: DataTypes.INTEGER,
+references: {
+model: Envelope,
+key: 'id'
+}
+},
+date: {
+type: DataTypes.DATE,
+allowNull: false
+},
+amount: {
+type: DataTypes.DECIMAL,
+allowNull: false
+},
+recipient: {
+type: DataTypes.STRING,
+allowNull: false
+},
+description: {
+type: DataTypes.STRING
+}
+}, {
+timestamps: true,
+createdAt: 'created_at'
+});
 
-// Function to get an envelope by the ID
-const getEnvelopeById = (id) => {
-  return envelopes.find(envelope => envelope.id === parseInt(id));
-};
-
-// Function to deposit or withdraw from an envelope
-const withdrawOrDeposit = (num, str) => {
-  if (str === 'withdraw') {
-    num = -num;
-  }
-  return num;
-};
-
-// Function to delete an envelope by ID
-const deleteEnvelopeById = (id) => {
-  const index = envelopes.findIndex(envelope => envelope.id === parseInt(id));
-  if (index !== -1) {
-    const deletedEnvelope = envelopes.splice(index, 1)[0];
-    totalBudget -= deletedEnvelope.value; // Adjust total budget
-    return deletedEnvelope;
-  }
-  return null;
-};
+// Sync the database
+sequelize.sync();
 
 // Endpoint to create a new budget envelope
-app.post('/envelopes', (req, res) => {
-  const { name, value } = req.body;
+app.post('/envelopes', async (req, res) => {
+const { name, value } = req.body;
 
-  if (!name || value === undefined) {
-    return res.status(400).json({ error: 'Name and value are required' });
-  }
+if (!name || value === undefined) {
+return res.status(400).json({ error: 'Name and value are required' });
+}
 
-  const newEnvelope = {
-    id: generateID(),
-    name: name,
-    value: value
-  };
-
-  envelopes.push(newEnvelope);
-  totalBudget += value;
-
-  res.status(201).json(newEnvelope);
+try {
+const newEnvelope = await Envelope.create({ name, value });
+res.status(201).json(newEnvelope);
+} catch (error) {
+res.status(500).json({ error: 'Failed to create envelope' });
+}
 });
 
 // Endpoint to get all envelopes
-app.get('/envelopes', (req, res) => {
-  res.status(200).json(envelopes);
+app.get('/envelopes', async (req, res) => {
+try {
+const envelopes = await Envelope.findAll();
+res.status(200).json(envelopes);
+} catch (error) {
+res.status(500).json({ error: 'Failed to retrieve envelopes' });
+}
 });
 
 // Endpoint to get total budget
-app.get('/total-budget', (req, res) => {
-  res.status(200).json({ totalBudget });
+app.get('/total-budget', async (req, res) => {
+try {
+const envelopes = await Envelope.findAll();
+const totalBudget = envelopes.reduce((sum, envelope) => sum + parseFloat(envelope.value), 0);
+res.status(200).json({ totalBudget });
+} catch (error) {
+res.status(500).json({ error: 'Failed to retrieve total budget' });
+}
 });
 
 // Endpoint to get a specific envelope
-app.get('/envelopes/:id', (req, res) => {
-  const envelopeId = req.params.id;
-  const findEnvelope = getEnvelopeById(envelopeId);
+app.get('/envelopes/', async (req, res) => {
+const envelopeId = req.params.id;
 
-  if (findEnvelope) {
-    res.status(200).json(findEnvelope);
-  } else {
-    res.status(404).send(`Envelope ID ${envelopeId} does not exist.`);
-  }
+try {
+const findEnvelope = await Envelope.findByPk(envelopeId);
+if (findEnvelope) {
+res.status(200).json(findEnvelope);
+} else {
+res.status(404).send(Envelope ID ${envelopeId} does not exist.);
+}
+} catch (error) {
+res.status(500).json({ error: 'Failed to retrieve envelope' });
+}
 });
 
 // Endpoint to update a specific envelope
-app.put('/envelopes/:id', (req, res) => {
-  const envelopeId = req.params.id;
-  const findEnvelope = getEnvelopeById(envelopeId);
+app.put('/envelopes/', async (req, res) => {
+const envelopeId = req.params.id;
+const { name, value, transaction_type } = req.body;
 
-  if (findEnvelope) {
-    const { name, value, transaction_type } = req.body;
+try {
+const findEnvelope = await Envelope.findByPk(envelopeId);
+if (findEnvelope) {
+let amount = value;
+if (transaction_type === 'withdraw') {
+amount = -value;
+}
 
-    if (value !== undefined && transaction_type) {
-      const amount = withdrawOrDeposit(value, transaction_type);
-      findEnvelope.value += amount;
-      totalBudget += amount;
-    }
+  await findEnvelope.update({
+    name: name || findEnvelope.name,
+    value: findEnvelope.value + (amount || 0)
+  });
 
-    if (name) {
-      findEnvelope.name = name;
-    }
+  res.status(200).send(`Envelope ${findEnvelope.name}'s current balance is ${findEnvelope.value}`);
+} else {
+  res.status(404).send(`Envelope ID ${envelopeId} does not exist.`);
+}
 
-    res.status(200).send(`Envelope ${findEnvelope.name}'s current balance is ${findEnvelope.value}`);
-  } else {
-    res.status(404).send(`Envelope ID ${envelopeId} does not exist.`);
-  }
+} catch (error) {
+res.status(500).json({ error: 'Failed to update envelope' });
+}
 });
 
 // Endpoint to delete a specific envelope
-app.delete('/envelopes/:id', (req, res) => {
-  const envelopeId = req.params.id;
-  const deletedEnvelope = deleteEnvelopeById(envelopeId);
+app.delete('/envelopes/', async (req, res) => {
+const envelopeId = req.params.id;
 
-  if (deletedEnvelope) {
-    res.status(200).send(`Envelope ID ${envelopeId} was deleted.`);
-  } else {
-    res.status(404).send(`Envelope ID ${envelopeId} does not exist.`);
-  }
+try {
+const deletedEnvelope = await Envelope.destroy({ where: { id: envelopeId } });
+if (deletedEnvelope) {
+res.status(200).send(Envelope ID ${envelopeId} was deleted.);
+} else {
+res.status(404).send(Envelope ID ${envelopeId} does not exist.);
+}
+} catch (error) {
+res.status(500).json({ error: 'Failed to delete envelope' });
+}
+});
+
+// Endpoint to create a new transaction
+app.post('/transactions', async (req, res) => {
+const { envelope_id, date, amount, recipient, description } = req.body;
+
+if (!envelope_id || !date || !amount || !recipient) {
+return res.status(400).json({ error: 'Envelope ID, date, amount, and recipient are required' });
+}
+
+try {
+const findEnvelope = await Envelope.findByPk(envelope_id);
+if (findEnvelope && findEnvelope.value >= amount) {
+await findEnvelope.update({ value: findEnvelope.value - amount });
+const newTransaction = await Transaction.create({ envelope_id, date, amount, recipient, description });
+res.status(201).json(newTransaction);
+} else {
+res.status(400).send('Insufficient funds or envelope not found.');
+}
+} catch (error) {
+res.status(500).json({ error: 'Failed to create transaction' });
+}
+});
+
+// Endpoint to get all transactions
+app.get('/transactions', async (req, res) => {
+try {
+const transactions = await Transaction.findAll();
+res.status(200).json(transactions);
+} catch (error) {
+res.status(500).json({ error: 'Failed to retrieve transactions' });
+}
+});
+
+// Endpoint to get a specific transaction
+app.get('/transactions/', async (req, res) => {
+const transactionId = req.params.id;
+
+try {
+const transaction = await Transaction.findByPk(transactionId);
+if (transaction) {
+res.status(200).json(transaction);
+} else {
+res.status(404).send(Transaction ID ${transactionId} does not exist.);
+}
+} catch (error) {
+res.status(500).json({ error: 'Failed to retrieve transaction' });
+}
+});
+
+// Endpoint to update a specific transaction
+app.put('/transactions/', async (req, res) => {
+const transactionId = req.params.id;
+const { date, amount, recipient, description } = req.body;
+
+try {
+const transaction = await Transaction.findByPk(transactionId);
+if (transaction) {
+await transaction.update({
+date: date || transaction.date,
+amount: amount || transaction.amount,
+recipient: recipient || transaction.recipient,
+description: description || transaction.description
+});
+res.status(200).json(transaction);
+} else {
+res.status(404).send(Transaction ID ${transactionId} does not exist.);
+}
+} catch (error) {
+res.status(500).json({ error: 'Failed to update transaction' });
+}
+});
+
+// Endpoint to delete a specific transaction
+app.delete('/transactions/', async (req, res) => {
+const transactionId = req.params.id;
+
+try {
+const deletedTransaction = await Transaction.destroy({ where: { id: transactionId } });
+if (deletedTransaction) {
+res.status(200).send(Transaction ID ${transactionId} was deleted.);
+} else {
+res.status(404).send(Transaction ID ${transactionId} does not exist.);
+}
+} catch (error) {
+res.status(500).json({ error: 'Failed to delete transaction' });
+}
 });
 
 // Endpoint to transfer budget between envelopes
-app.post('/envelopes/transfer/:from/:to', (req, res) => {
-    const { value } = req.body;
-    const fromEnvelope = getEnvelopeById(req.params.from);
-    const toEnvelope = getEnvelopeById(req.params.to);
-  
-    if (value !== undefined && fromEnvelope && toEnvelope) {
-      if (fromEnvelope.value >= value) {
-        fromEnvelope.value -= value;
-        toEnvelope.value += value;
-  
-        res.status(200).send(`$${value} was transferred from ${fromEnvelope.name} to ${toEnvelope.name}.`);
-      } else {
-        res.status(400).send(`Insufficient funds in ${fromEnvelope.name}.`);
-      }
-    } else {
-      res.status(404).send('One or both envelopes not found.');
-    }
-  });
+app.post('/envelopes/transfer//', async (req, res) => {
+const { value } = req.body;
+const fromId = req.params.from;
+const toId = req.params.to;
+
+try {
+const fromEnvelope = await Envelope.findByPk(fromId);
+const toEnvelope = await Envelope.findByPk(toId);
+
+if (fromEnvelope && toEnvelope) {
+  if (fromEnvelope.value >= value) {
+    await fromEnvelope.update({ value: fromEnvelope.value - value });
+    await toEnvelope.update({ value: toEnvelope.value + value });
+
+    res.status(200).send(`$${value} was transferred from ${fromEnvelope.name} to ${toEnvelope.name}.`);
+  } else {
+    res.status(400).send(`Insufficient funds in ${fromEnvelope.name}.`);
+  }
+} else {
+  res.status(404).send('One or both envelopes not found.');
+}
+
+} catch (error) {
+res.status(500).json({ error: 'Failed to transfer funds' });
+}
+});
 
 app.listen(port, () => {
-  console.log(`Server is running on http://localhost:${port}`);
+console.log(Server is running on http://localhost:${port});
 });

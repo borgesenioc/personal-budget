@@ -1,0 +1,114 @@
+openapi: 3.0.0
+info:
+  title: Envelope Budget API
+  version: '1.0.0'
+  description: API for managing budget envelopes and transactions
+servers:
+  - url: http://localhost:3000
+
+paths:
+  /envelopes:
+    post:
+      summary: Create a new budget envelope
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                value:
+                  type: number
+      responses:
+        201:
+          description: Envelope created
+
+    get:
+      summary: Get all budget envelopes
+      responses:
+        200:
+          description: List of envelopes
+
+  /total-budget:
+    get:
+      summary: Get total budget
+      responses:
+        200:
+          description: Total budget value
+
+  /envelopes/{id}:
+    get:
+      summary: Get a specific envelope
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Envelope data
+
+    put:
+      summary: Update a specific envelope
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+                value:
+                  type: number
+                transaction_type:
+                  type: string
+      responses:
+        200:
+          description: Envelope updated
+
+    delete:
+      summary: Delete a specific envelope
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema:
+            type: integer
+      responses:
+        200:
+          description: Envelope deleted
+
+  /transactions:
+    post:
+      summary: Create a new transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                envelope_id:
+                  type: integer
+                date:
+                  type: string
+                  format: date
+                amount:
+                  type: number
+                recipient:
+                  type: string
+                description:
+                  type: string
+      responses:
+        201:
+          description: Transaction created
