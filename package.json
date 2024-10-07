@@ -10,7 +10,7 @@
   "author": "enio",
   "license": "ISC",
   "dependencies": {
-    "express": "^4.19.2"
-  },
-  "devDependencies": {}
+    "express": "^4.21.0",
+    "pg": "^8.13.0"
+  }
 }
